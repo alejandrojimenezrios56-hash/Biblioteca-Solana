@@ -1,34 +1,43 @@
 // No imports needed: web3, anchor, pg and more are globally available
 
-describe("Test", () => {
-  it("initialize", async () => {
-    // Generate keypair for the new account
-    const newAccountKp = new web3.Keypair();
+describe("Renta de Autos Test", () => {
 
-    // Send transaction
-    const data = new BN(42);
-    const txHash = await pg.program.methods
-      .initialize(data)
-      .accounts({
-        newAccount: newAccountKp.publicKey,
-        signer: pg.wallet.publicKey,
-        systemProgram: web3.SystemProgram.programId,
-      })
-      .signers([newAccountKp])
-      .rpc();
-    console.log(`Use 'solana confirm -v ${txHash}' to see the logs`);
+  it("Crear agencia", async () => {
 
-    // Confirm transaction
-    await pg.connection.confirmTransaction(txHash);
-
-    // Fetch the created account
-    const newAccount = await pg.program.account.newAccount.fetch(
-      newAccountKp.publicKey
+    // PDA de la agencia
+    const [agenciaPda] = web3.PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("agencia"),
+        pg.wallet.publicKey.toBuffer()
+      ],
+      pg.program.programId
     );
 
-    console.log("On-chain data is:", newAccount.data.toString());
+    const nombreAgencia = "Autos Omar";
 
-    // Check whether the data on-chain is equal to local 'data'
-    assert(data.eq(newAccount.data));
+    // Ejecutar instrucción del programa
+    const txHash = await pg.program.methods
+      .crearAgencia(nombreAgencia)
+      .accounts({
+        owner: pg.wallet.publicKey,
+        agencia: agenciaPda,
+        systemProgram: web3.SystemProgram.programId,
+      })
+      .rpc();
+
+    console.log(`Use 'solana confirm -v ${txHash}' to see the logs`);
+
+    // Confirmar transacción
+    await pg.connection.confirmTransaction(txHash);
+
+    // Obtener datos guardados en blockchain
+    const agencia = await pg.program.account.agenciaAutos.fetch(agenciaPda);
+
+    console.log("Datos de la agencia:", agencia);
+
+    // Validación
+    assert(agencia.nombre === nombreAgencia);
+
   });
+
 });
